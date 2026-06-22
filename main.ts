@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 // Slack -> Claude Code channel (Socket Mode)
 // Requires: bun add @modelcontextprotocol/sdk
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'

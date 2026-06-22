@@ -3,18 +3,45 @@
   "version": "0.0.1",
   "description": "Slack -> Claude Code channel MCP server (Socket Mode)",
   "type": "module",
-  "private": true,
+  "license": "MIT",
+  "author": "jacobycwang",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jacobycwang/claude-slack-event-channel-mcp.git"
+  },
+  "homepage": "https://github.com/jacobycwang/claude-slack-event-channel-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/jacobycwang/claude-slack-event-channel-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "slack",
+    "socket-mode"
+  ],
   "module": "main.ts",
   "bin": {
-    "claude-slack-event-channel-mcp": "main.ts"
+    "claude-slack-event-channel-mcp": "dist/main.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    ".env.example"
+  ],
+  "engines": {
+    "node": ">=18"
   },
   "scripts": {
     "start": "bun run main.ts",
     "dev": "bun --watch main.ts",
+    "build": "bun build main.ts --target=node --outfile=dist/main.js",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "check": "biome check --write ."
+    "check": "biome check --write .",
+    "prepublishOnly": "bun run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

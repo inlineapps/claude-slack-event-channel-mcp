@@ -1,6 +1,9 @@
 # dependencies
 node_modules/
 
+# build output
+dist/
+
 # bun
 # NOTE: bun.lock is committed (this is an application, not a library) for reproducible installs
 .bun/
