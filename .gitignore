@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+
+# bun
+# NOTE: bun.lock is committed (this is an application, not a library) for reproducible installs
+.bun/
+
+# env / secrets
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/
