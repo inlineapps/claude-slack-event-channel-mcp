@@ -31,6 +31,23 @@ const ALLOWED_SENDERS = new Set(
     .filter(Boolean),
 )
 
+// Content keyword filter (case-insensitive, comma-separated). Empty = forward all messages.
+// Only messages whose content contains at least one of these keywords are forwarded,
+// e.g. set to "Human Security" to forward only that alert. Applies to kind="message" only.
+const CONTENT_FILTERS = (process.env.SLACK_CONTENT_FILTERS ?? '')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean)
+
+// Event type whitelist (comma-separated, e.g. "message,reaction_added"). Empty = allow all.
+// Only events whose `type` is listed are forwarded.
+const EVENT_TYPES = new Set(
+  (process.env.SLACK_EVENT_TYPES ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+)
+
 const mcp = new McpServer(
   { name: 'slack-event-channel', version: '0.0.1' },
   {
@@ -63,6 +80,21 @@ interface SlackEvent {
   thread_ts?: string
   reaction?: string
   item?: { channel?: string; ts?: string }
+  // Alert bots (Opsgenie, Human Security, etc.) carry the body in attachments rather than `text`.
+  attachments?: Array<{ pretext?: string; title?: string; text?: string; fallback?: string }>
+}
+
+// Collect the human-readable body from a Slack message: plain `text` plus any attachment
+// pretext/title/text (falling back to `fallback`). Used so alert-bot messages whose payload
+// lives in attachments (e.g. Opsgenie "Human Security" alerts) still get forwarded.
+function messageContent(evt: SlackEvent): string {
+  const parts: string[] = []
+  if (evt.text) parts.push(evt.text)
+  for (const a of evt.attachments ?? []) {
+    const body = [a.pretext, a.title, a.text].filter(Boolean).join('\n') || a.fallback
+    if (body) parts.push(body)
+  }
+  return parts.join('\n').trim()
 }
 
 // ---- Resolve Slack IDs -> human-readable names (cached; best-effort) ----
@@ -114,6 +146,8 @@ async function resolveMentions(text: string): Promise<string> {
 
 async function forward(evt: SlackEvent) {
   const channel = evt.channel ?? evt.item?.channel
+  // 0) Only forward whitelisted event types
+  if (EVENT_TYPES.size && evt.type && !EVENT_TYPES.has(evt.type)) return
   // 1) Only watch the channels we care about
   if (WATCH_CHANNELS.size && channel && !WATCH_CHANNELS.has(channel)) return
 
@@ -129,7 +163,12 @@ async function forward(evt: SlackEvent) {
     meta.ts = evt.ts ?? ''
     const { thread_ts } = evt
     if (thread_ts && thread_ts !== evt.ts) meta.thread_ts = thread_ts // present = this is a reply
-    content = evt.text ?? ''
+    content = messageContent(evt)
+    if (!content) return // nothing readable to forward (e.g. attachment-less notice)
+    if (CONTENT_FILTERS.length) {
+      const haystack = content.toLowerCase()
+      if (!CONTENT_FILTERS.some((kw) => haystack.includes(kw))) return // keyword gate
+    }
   } else if (evt.type === 'reaction_added' || evt.type === 'reaction_removed') {
     const sender = evt.user ?? ''
     if (ALLOWED_SENDERS.size && !ALLOWED_SENDERS.has(sender)) return
